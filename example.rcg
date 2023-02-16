@@ -1,0 +1,8 @@
+N:S A
+T:ab
+V:XYZ
+S:S
+S(X Y Z) -> A(X, Y, Z)
+A(a X, a Y, a Z) -> A(X, Y, Z)
+A(b X, b Y, b Z) -> A(X, Y, Z)
+A( , , ) ->
