@@ -1,0 +1,9 @@
+N:S eq
+T:a
+V:XY
+S:S
+S(XY) -> S(X)eq(X,Y)
+S(a) ->
+S() ->
+eq(aX,aY)-> eq(X,Y)
+eq(,) ->

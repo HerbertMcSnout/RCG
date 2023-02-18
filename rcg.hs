@@ -1,10 +1,11 @@
 module RCG where
+import System.Environment (getArgs)
 import Data.List (intercalate)
 import Data.Maybe (catMaybes)
 import qualified Data.Set as Set -- (Set, member, delete, fromList, toList)
 import qualified Data.Map as Map -- (Map, member, lookup, insert)
 import Control.Monad.State
-import Debug.Trace (trace)
+--import Debug.Trace (trace)
 
 -- (Positive) Range Concatenation Grammar
 data RCG = RCG {
@@ -72,6 +73,7 @@ parseClause n t v s =
   where
     parsePreds :: String -> Maybe [Predicate]
     parsePreds "" = Just []
+    parsePreds (' ' : s) = parsePreds s
     parsePreds s = parsePred s >>= \(p, s') -> ((:) p) <$> parsePreds s'
     
     parseArrow :: String -> Maybe String
@@ -160,6 +162,7 @@ data RCGState = RCGState {clauseMemo :: Memo, prdctMemo :: Memo}
 parseString :: RCG -> String -> Bool
 parseString g@(RCG n t v s p) str =
   let (b, mem) = runState (prdct (ni s) [(0, length str)]) (RCGState mempty mempty) in
+--    trace (show g ++ "\n" ++ show mem) $
     b
   where
     n' = Set.toList n
@@ -175,6 +178,7 @@ parseString g@(RCG n t v s p) str =
       maybe
         (state (\m -> ((), m {clauseMemo = Map.insert (i, rho) False (clauseMemo m)})) >>
          clauseh (p !! i) rho >>= \b ->
+--         trace ("Clauseh " ++ show (p !! i) ++ " " ++ show rho ++ " -> " ++ show b) $
          state (\m -> (b, m {clauseMemo = Map.insert (i, rho) b (clauseMemo m)})))
         return
         (Map.lookup (i, rho) memo)
@@ -186,6 +190,7 @@ parseString g@(RCG n t v s p) str =
       maybe
         (state (\m -> ((), m {prdctMemo = Map.insert (i, rho) False (prdctMemo m)})) >>
          prdcth (n' !! i) rho >>= \b ->
+--         trace ("Prdcth " ++ show (n' !! i) ++ " " ++ show rho ++ " -> " ++ show b) $
          state (\m -> (b, m {prdctMemo = Map.insert (i, rho) b (prdctMemo m)})))
         return
         (Map.lookup (i, rho) memo)
@@ -251,8 +256,15 @@ parseString g@(RCG n t v s p) str =
       let pas = filter (\(i, lhs :->: rhs) -> predN lhs == a) (enumerate p) in
         any id <$> mapM (\(i, lhs :->: rhs) -> clause i rho) pas
 
+readLines :: RCG -> IO ()
+readLines g = getContents >>= foldr (\line next -> putStrLn (show (parseString g line)) >> next) (return ()) . lines
+
+parseError :: String -> IO ()
+parseError fn = putStrLn ("Error parsing RCG from file " ++ show fn)
 
 main :: IO ()
 main =
-  readFile "example.rcg" >>=
-  maybe (putStrLn "Parse error") (\g -> getContents >>= foldr (\line next -> putStrLn (show (parseString g line)) >> next) (return ()) . lines) . parseRCG
+  getArgs >>= \as ->
+  case as of
+    [fn] -> parseRCG <$> readFile fn >>= maybe (parseError fn) readLines
+    _ -> putStrLn "Usage: rcg <grammar file>"
