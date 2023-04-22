@@ -1,0 +1,13 @@
+N:S T A E
+T:ab
+V:XYZ
+S:S
+
+S(XY) -> T(X, Y)
+T(X,) -> A(X)
+T(X, YZ) -> A(X) E(X, Y) T(X, Z)
+A(aXb) -> A(X)
+A(ab) ->
+E(aX, aY) -> E(X, Y)
+E(bX, bY) -> E(X, Y)
+E(,) ->

@@ -78,8 +78,8 @@ postamble input rcg =
   "streeq " ++ show (rcgS rcg) ++ " " ++ foldr (\c rest -> "(Cons " ++ c : " " ++ rest ++ ")") "Nil" input
 
 srcgToPerpl :: String -> RCG -> String
-srcgToPerpl input rcg
-  | not (isSRCG rcg) = error ("Not a valid SRCG: " ++ show rcg)
+--srcgToPerpl input rcg
+--  | not (isSRCG rcg) = error ("Not a valid SRCG: " ++ show rcg)
 srcgToPerpl input rcg =
   preamble rcg ++
   List.intercalate "\n" [clauseToPerpl nt rhss | (nt, rhss) <- Map.toList (clauseMap (rcgP rcg))] ++ "\n" ++ postamble input rcg

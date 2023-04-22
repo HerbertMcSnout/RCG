@@ -1,0 +1,15 @@
+N:S S' M one eqlen
+T:abc
+V:WXYZT
+S:S
+S(X) -> S'(X, X)
+S'(W, XYZ) -> eqlen(X, Y) eqlen(X, Z) M(X, X, X, W)
+one(a) ->
+one(b) ->
+one(c) ->
+M(XT, Y, Z, aW) -> M(X, Y, Z, W) one(T)
+M(X, YT, Z, bW) -> M(X, Y, Z, W) one(T)
+M(X, Y, ZT, cW) -> M(X, Y, Z, W) one(T)
+M(,,,) ->
+eqlen(,) ->
+eqlen(WX, YZ) -> one(W) one(Y) eqlen(X, Z)

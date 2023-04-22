@@ -1,0 +1,29 @@
+data Char = a | b;
+data String = Nil | Cons Char String;
+data Streeng = Eps | Trm Char | Cat Streeng Streeng;
+data Maybe a = None | Some a;
+
+define streeqh st s =
+  case st of
+    | Eps -> Some s
+    | Trm c -> (case s of Nil -> None | Cons c' s -> if c == c' then Some s else None)
+    | Cat st1 st2 ->
+      let s' = streeqh st1 s in
+        case s' of None -> None | Some s' -> streeqh st2 s';
+define streeq st s =
+  let s' = streeqh st s in
+    case s' of None -> False | Some s' -> case s' of Nil -> True | Cons _ _ -> False;
+
+--define concat s1 s2 = case s1 of
+--  | Nil -> s2
+--  | Cons a s1 -> let s3 = concat s1 s2 in Cons a s3;
+
+define A = amb
+  (let (X, Y, Z) = A in ((Cat (Trm a) X), (Cat (Trm a) Y), (Cat (Trm a) Z))) -- A(aX,aY,aZ) -> A(X,Y,Z)
+  (let (X, Y, Z) = A in ((Cat (Trm b) X), (Cat (Trm b) Y), (Cat (Trm b) Z))) -- A(bX,bY,bZ) -> A(X,Y,Z)
+  ((Eps, Eps, Eps)) -- A(,,) -> 
+  ;
+define S = amb
+  (let (X, Y, Z) = A in ((Cat X (Cat Y Z)))) -- S(XYZ) -> A(X,Y,Z)
+  ;
+streeq S (Cons a (Cons b (Cons a (Cons b (Cons a (Cons b Nil))))))

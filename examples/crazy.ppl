@@ -1,0 +1,43 @@
+{-
+S(AB) -> P(B, A)
+P(AxB, CD) -> Q(D, A) R(B) R(C)
+Q(Ay, zB) -> Q(A, B)
+Q(ε, ε) -> θ
+R(zA) -> R(A)
+R(ε) -> θ
+
+R = z*
+Q = (y^n, z^n)
+P = (z^n x z*, z* y^n)
+S = z* y^n z^n x z*
+-}
+
+data Char = x | y | z;
+data String = Nil | Cons Char String;
+data Streeng = Nil' | Cons' Char | Concat Streeng Streeng;
+data Maybe a = None | Some a;
+
+define streeqh st s =
+  case st of
+    | Nil' -> Some s
+    | Cons' c -> (case s of Nil -> None | Cons c' s -> if c == c' then Some s else None)
+    | Concat st1 st2 ->
+      let s' = streeqh st1 s in
+        case s' of None -> None | Some s' -> streeqh st2 s';
+define streeq st s =
+  let s' = streeqh st s in
+    case s' of None -> False | Some s' -> case s' of Nil -> True | Cons _ _ -> False;
+
+define concat s1 s2 = case s1 of
+  | Nil -> s2
+  | Cons a s1 -> let s3 = concat s1 s2 in Cons a s3;
+
+define S = let (B, A) = P in Concat A B;
+define P = let (D, A) = Q in let B = R in let C = R in (Concat A (Concat (Cons' x) B), Concat C D);
+define Q = amb (Nil', Nil') (let (A, B) = Q in (Concat A (Cons' y), Concat (Cons' z) B));
+define R = amb Nil' (Concat (Cons' z) R);
+
+--define input = Cons z (Cons z (Cons y (Cons z (Cons x Nil))));
+define input = Cons y (Cons z (Cons x Nil));
+
+streeq S input;
