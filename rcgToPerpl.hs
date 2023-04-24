@@ -32,38 +32,57 @@ preamble rcg =
   \  let s' = streeqh st s in\n\
   \    case s' of None -> False | Some s' -> case s' of Nil -> True | Cons _ _ -> False;\n\n"
 
-anyName = "_ANY_"
+anyNT = Nonterminal "_ANY_"
+oneNT = Nonterminal "_ONE_"
 
 -- Clauses for rule that accepts any arbitrary string
 anyClauses :: [Terminal] -> [Clause]
 anyClauses alphabet =
   -- ANY() ->
-  -- ANY(XY) -> ANY(X) ANY(Y)
-  -- ANY(c) ->
-  let nt = (Nonterminal anyName)
-      x = Variable 'X'
+  -- ANY(XY) -> ONE(X) ANY(Y)
+  -- ONE(c) ->      [foreach terminal c]
+  let x = Variable 'X'
       y = Variable 'Y' in
-    (Predicate nt [Arg []] :->: []) :
-    (Predicate nt [Arg [AtomVar x, AtomVar y]] :->:
-       [Predicate nt [Arg [AtomVar x]],
-        Predicate nt [Arg [AtomVar y]]]) :
-    map (\c -> Predicate nt [Arg [AtomTrm c]] :->: []) alphabet
-
--- TODO: "normalize" rcgs, and use _ANY_ for unused vars
+    (Predicate anyNT [Arg []] :->: []) :
+    (Predicate anyNT [Arg [AtomVar x, AtomVar y]] :->:
+       [Predicate oneNT [Arg [AtomVar x]],
+        Predicate anyNT [Arg [AtomVar y]]]) :
+    map (\c -> Predicate oneNT [Arg [AtomTrm c]] :->: []) alphabet
 
 postamble :: String -> RCG -> String
 postamble input rcg =
-  "streeq " ++ show (rcgS rcg) ++ " " ++ foldr (\c rest -> "(Cons " ++ c : " " ++ rest ++ ")") "Nil" input
+  "streeq " ++ show (rcgS rcg) ++ " "
+    ++ foldr (\c rest -> "(Cons " ++ c : " " ++ rest ++ ")") "Nil" input
   
-type RenameM a = State (Map.Map Variable [Variable], Map.Map Variable Variable) a
+type RenameM a = State (Map.Map Variable [Variable], Map.Map Variable Arg) a
+
+-- For two lists A and B where A is a sublist of B,
+-- returns the rest of B that surrounds A
+-- Returns at first match if A is a sublist of B in
+-- multiple places (e.g. A = [0] and B = [1,0,1,0,1])
+findSublist :: Eq a => [a] -> [a] -> Maybe ([a], [a])
+findSublist = h [] where
+  prefix [] bs = Just bs
+  prefix (a : as) (b : bs)
+    | a == b = prefix as bs
+    | otherwise = Nothing
+  prefix (a : as) [] = Nothing
+  
+  h acc as [] = Nothing
+  h acc as (b : bs) = maybe (h (b : acc) as bs) (\(s) -> Just (reverse acc, s)) (prefix as (b : bs))
 
 rcgToPerpl :: String -> RCG -> String
 rcgToPerpl input rcg =
   preamble rcg ++
-  List.intercalate "\n" [clauseToPerpl nt rhss | (nt, rhss) <- Map.toList (clauseMap (rcgP rcg))] ++ "\n" ++ postamble input rcg
+  List.intercalate "\n"
+    [clauseToPerpl nt rhss
+      | (nt, rhss) <- Map.toList (clauseMap (rcgP rcg))]
+  ++ "\n" ++ postamble input rcg
   where
     clauseMap :: [Clause] -> Map.Map Nonterminal [([Arg], [Predicate])]
-    clauseMap cls = Map.unionsWith (++) [Map.singleton (predN lhs) [(predA lhs, rhs)] | (lhs :->: rhs) <- cls ++ anyCs]
+    clauseMap cls = Map.unionsWith (++)
+      [Map.singleton (predN lhs) [(predA lhs, rhs)]
+        | (lhs :->: rhs) <- cls ++ anyCs]
 
     anyCs = anyClauses (Set.toList (rcgT rcg))
 
@@ -78,7 +97,7 @@ rcgToPerpl input rcg =
     cats (s : ss) = "(Cat " ++ s ++ " " ++ cats ss ++ ")"
 
     ands :: [String] -> String
-    ands [] = anyName
+    ands [] = show anyNT
     ands [s] = s
     ands (s : ss) = "(And " ++ s ++ " " ++ ands ss ++ ")"
 
@@ -89,7 +108,11 @@ rcgToPerpl input rcg =
     atomToPerpl (AtomTrm t) = return ("(Trm " ++ show t ++ ")")
 
     argToPerpl :: Arg -> RenameM String
-    argToPerpl (Arg as) = cats <$> mapM atomToPerpl as
+    argToPerpl (Arg as) =
+      get >>= \(vs, rs) ->
+      cats <$> mapM atomToPerpl as >>= \s ->
+      composites (Arg as) rs >>= \cs ->
+      return (ands (s : cs))
 
     argsToPerpl :: [Arg] -> RenameM String
     argsToPerpl [a] = argToPerpl a
@@ -111,7 +134,11 @@ rcgToPerpl input rcg =
 
     addRename :: Variable -> Variable -> RenameM ()
     addRename v v' =
-      modify $ \(vs, rs) -> (Map.insertWith (++) v [v'] vs, Map.insert v' v rs)
+      modify $ \(vs, rs) -> (Map.insertWith (++) v [v'] vs, Map.insert v' (Arg [AtomVar v]) rs)
+
+    addComposite :: Arg -> Variable -> RenameM ()
+    addComposite a t =
+      modify $ \(vs, rs) -> (vs, Map.insert t a rs)
 
     freshVar :: Variable -> RenameM Variable
     freshVar t =
@@ -120,32 +147,81 @@ rcgToPerpl input rcg =
       where
         -- pick a new terminal until we find an unused one
         ts = Variable <$> (['A'..'Z'] ++ ['a'..'z'] ++ map toEnum [128..])
-        h t' vs rs (t'' : ts)
-          | t' `Map.member` rs || t' `Map.member` vs = h t'' vs rs ts
-          | otherwise = addRename t t' >> return t'
-    
+        h t'@(Variable s) vs rs (t'' : ts)
+          |  t' `Map.member` rs
+          || t' `Map.member` vs
+          || Nonterminal [s] `Set.member` rcgN rcg -- avoid conflicts with nonterminals
+          || Terminal     s  `Set.member` rcgT rcg -- avoid conflicts with terminals
+            = h t'' vs rs ts
+          | otherwise = return t'
+
+    newVar :: Variable -> RenameM Variable
+    newVar t = freshVar t >>= \t' -> addRename t t' >> return t
+
     renamePred :: Predicate -> RenameM Predicate
     renamePred (Predicate nt as) = Predicate nt <$> mapM renameArg as
     
     renameArg :: Arg -> RenameM Arg
-    renameArg (Arg as) = Arg <$> mapM renameAtom as
+    renameArg (Arg as)
+      | length as >= 2 =
+        --let h (AtomVar v) = modify $ \(vs, rs) -> (Map.insert v [] vs, rs) in
+        --mapM renameAtom as >>= \as' ->
+        --mapM h as >>
+        freshVar (Variable 'A') >>= \v ->
+        addComposite (Arg as) v >>
+        return (Arg [AtomVar v])
+      | otherwise = Arg <$> mapM renameAtom as
 
     renameAtom :: Atom -> RenameM Atom
-    renameAtom (AtomVar v) = AtomVar <$> freshVar v
+    renameAtom (AtomVar v) = AtomVar <$> newVar v
     renameAtom (AtomTrm t) = return (AtomTrm t)
+
+    -- Reconstructs all partial composite args (e.g. S(XYZ) -> A(XY) B(YZ))
+    -- to be like And (Cat X (Cat Y Z)) (And (Cat M Z) (Cat X N)), thereby
+    -- forcing M = XY and N = YZ
+    composites :: Arg -> Map.Map Variable Arg -> RenameM [String]
+    composites a m =
+      foldr (maybe id (:)) []
+      <$> mapM (composite a) (filter (\(v, Arg as) -> length as > 1) (Map.toList m))
+
+    composite :: Arg -> (Variable, Arg) -> RenameM (Maybe String)
+    composite (Arg a') (v, Arg a) =
+      maybe
+        (return Nothing)
+        (\(pfx, sfx) -> Just <$> cats <$> mapM atomToPerpl (pfx ++ AtomVar v : sfx))
+        (findSublist a a')
+
+    -- TODO: multiple occurrences of the same variable on the lhs (e.g. A(X,X)->... or S(XX)->...)
+
+    defaultEmpty :: [Atom] -> String -> RenameM String
+    defaultEmpty [] s = return s
+    defaultEmpty (AtomTrm c : as) s = defaultEmpty as s
+    defaultEmpty (AtomVar v : as) s =
+      defaultEmpty as s >>= \s' ->
+      get >>= \(vs, rs) ->
+      maybe
+        (return ("let " ++ show v ++ " = " ++ show anyNT ++ " in " ++ s'))
+        (\_ -> return s')
+        (vs Map.!? v)
+    defaultEmptyArg :: [Arg] -> String -> RenameM String
+    defaultEmptyArg [] s = return s
+    defaultEmptyArg (Arg a : as) s =
+      defaultEmptyArg as s >>= \s' ->
+      defaultEmpty a s'
 
     clauseh' :: [Arg] -> [Predicate] -> RenameM String
     clauseh' as ps =
-      mapM renamePred ps >>=
+      mapM renamePred ps >>= \ps' ->
+      get >>= \(vs, rs) ->
       foldr
         (\(Predicate nt' as') rest ->
            rest >>= \restr ->
            return ("let " ++ argsToPerpl' as' ++ " = " ++ show nt' ++ " in " ++ restr))
-        (argsToPerpl as)
+        (argsToPerpl as >>= defaultEmptyArg as) ps'
 
     clauseh :: [Arg] -> [Predicate] -> String
     clauseh as ps =
-      let (s, (vs, rs)) = runState (clauseh' as ps) (mempty, mempty) in s
+      let (s, (vs, rs)) = runState (clauseh' as ps) (Map.empty, Map.empty) in s
 
     clauseToPerpl :: Nonterminal -> [([Arg], [Predicate])] -> String
     clauseToPerpl nt rhss =
