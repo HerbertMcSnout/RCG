@@ -191,8 +191,6 @@ rcgToPerpl input rcg =
         (\(pfx, sfx) -> Just <$> cats <$> mapM atomToPerpl (pfx ++ AtomVar v : sfx))
         (findSublist a a')
 
-    -- TODO: multiple occurrences of the same variable on the lhs (e.g. A(X,X)->... or S(XX)->...)
-
     defaultEmpty :: [Atom] -> String -> RenameM String
     defaultEmpty [] s = return s
     defaultEmpty (AtomTrm c : as) s = defaultEmpty as s
