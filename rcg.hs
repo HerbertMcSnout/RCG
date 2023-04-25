@@ -123,10 +123,10 @@ parseRCG :: String -> Maybe RCG
 parseRCG s =
   case lines s of
     n' : t' : v' : s' : p' ->
-      let n = parseNonterminals (dropPrefix "N:" n')
-          t = parseTerminals (dropPrefix "T:" t')
-          v = parseVariables (dropPrefix "V:" v')
-          s = Nonterminal (stripWS $ dropPrefix "S:" s') in
+      let n = parseNonterminals (dropPrefix "N:" (dropPrefix "Nonterminals:" n'))
+          t = parseTerminals (dropPrefix "T:" (dropPrefix "Terminals:" t'))
+          v = parseVariables (dropPrefix "V:" (dropPrefix "Variables:" v'))
+          s = Nonterminal (stripWS (dropPrefix "S:" (dropPrefix "Start:" s'))) in
         (if s `Set.member` n then Just () else Nothing) >>
         mapM (parseClause n t v) (filter (not . null) p') >>= \p ->
         Just (RCG n t v s p)

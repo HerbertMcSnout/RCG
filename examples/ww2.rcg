@@ -1,5 +1,5 @@
-N:S
-T:ab
-V:X
-S:S
+Nonterminals: S
+Terminals: ab
+Variables: X
+Start: S
 S(XX) ->

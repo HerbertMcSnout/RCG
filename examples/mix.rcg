@@ -1,7 +1,8 @@
-N:S M one eqlen
-T:abc
-V:WXYZT
-S:S
+Nonterminals: S M one eqlen
+Terminals: abc
+Variables: WXYZT
+Start: S
+
 S(XYZ) -> eqlen(X, Y) eqlen(X, Z) M(X, X, X, XYZ)
 one(a) ->
 one(b) ->

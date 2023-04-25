@@ -1,7 +1,8 @@
-N:S A
-T:ab
-V:XY
-S:S
+Nonterminals: S A
+Terminals: ab
+Variables: XY
+Start: S
+
 S(XY) -> A(X, Y)
 A(aX, aY) -> A(X, Y)
 A(bX, bY) -> A(X, Y)

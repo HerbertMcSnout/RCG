@@ -1,7 +1,7 @@
-N:S T A E
-T:ab
-V:XYZ
-S:S
+Nonterminals: S T A E
+Terminals: ab
+Variables: XYZ
+Start: S
 
 S(XY) -> T(X, Y)
 T(X,) -> A(X)

@@ -1,7 +1,8 @@
-N:S EQ
-T:a
-V:XY
-S:S
+Nonterminals: S EQ
+Terminals: a
+Variables: XY
+Start: S
+
 S(X Y) -> EQ(X, Y) S(X)
 S(a) ->
 EQ(aX, aY) -> EQ(X, Y)
