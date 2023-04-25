@@ -1,8 +1,0 @@
-N: S opp
-T: ab
-V: XY
-S: S
-S(XY) -> opp(X, Y)
-opp(aX, bY) -> opp(X, Y)
-opp(X, Y) -> opp(Y, X)
-opp(,) ->

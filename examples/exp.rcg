@@ -3,6 +3,6 @@ T:a
 V:XY
 S:S
 S(X Y) -> EQ(X, Y) S(X)
-S() ->
+S(a) ->
 EQ(aX, aY) -> EQ(X, Y)
 EQ(,) ->
