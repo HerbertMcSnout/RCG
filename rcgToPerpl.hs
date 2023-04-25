@@ -30,7 +30,7 @@ preamble rcg =
   \          if s' == s'' then Some s' else None));\n\
   \define streeq st s =\n\
   \  let s' = streeqh st s in\n\
-  \    case s' of None -> False | Some s' -> case s' of Nil -> True | Cons _ _ -> False;\n\n"
+  \    case s' of None -> fail | Some s' -> case s' of Nil -> () | Cons _ _ -> fail;\n\n"
 
 anyNT = Nonterminal "_ANY_"
 oneNT = Nonterminal "_ONE_"
@@ -156,7 +156,10 @@ rcgToPerpl input rcg =
           | otherwise = return t'
 
     newVar :: Variable -> RenameM Variable
-    newVar t = freshVar t >>= \t' -> addRename t t' >> return t
+    newVar t = freshVar t >>= \t' -> addRename t t' >> return t'
+
+    -- TODO: can we do negative RCGs?
+    -- TODO: if PERPL can do isPrime... then have we shown PRCG = NRCG?
 
     renamePred :: Predicate -> RenameM Predicate
     renamePred (Predicate nt as) = Predicate nt <$> mapM renameArg as
@@ -164,13 +167,16 @@ rcgToPerpl input rcg =
     renameArg :: Arg -> RenameM Arg
     renameArg (Arg as)
       | length as >= 2 =
-        --let h (AtomVar v) = modify $ \(vs, rs) -> (Map.insert v [] vs, rs) in
-        --mapM renameAtom as >>= \as' ->
-        --mapM h as >>
+        --let h (AtomVar v) = modify $ \(vs, rs) -> (Map.insert v [] vs, rs)
+        --    h (AtomTrm c) = return () in
         freshVar (Variable 'A') >>= \v ->
-        addComposite (Arg as) v >>
+        mapM renameAtom as >>= \as' ->
+        --let as' = as in
+        --mapM h as' >>
+        addComposite (Arg as') v >>
         return (Arg [AtomVar v])
       | otherwise = Arg <$> mapM renameAtom as
+      -- S(XX) -> A(X, X) B(XX) becomes let (X, Y) = A in let Z = B in And B (Cat X Y)
 
     renameAtom :: Atom -> RenameM Atom
     renameAtom (AtomVar v) = AtomVar <$> newVar v
@@ -198,7 +204,9 @@ rcgToPerpl input rcg =
       defaultEmpty as s >>= \s' ->
       get >>= \(vs, rs) ->
       maybe
-        (return ("let " ++ show v ++ " = " ++ show anyNT ++ " in " ++ s'))
+        (-- vvv don't repeat this, e.g. for `S(XX)->` we don't want two `let X = ANY`'s
+         put (Map.insert v [v] vs, rs) >>
+         return ("let " ++ show v ++ " = " ++ show anyNT ++ " in " ++ s'))
         (\_ -> return s')
         (vs Map.!? v)
     defaultEmptyArg :: [Arg] -> String -> RenameM String
