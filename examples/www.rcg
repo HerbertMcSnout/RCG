@@ -1,3 +1,4 @@
+# Recognizes the language {www | w \in {a,b}*}
 Nonterminals: S A
 Terminals: ab
 Variables: XYZ

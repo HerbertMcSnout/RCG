@@ -1,9 +1,10 @@
+# Recognizes the language {a^(2^n) | n >= 0}
 Nonterminals: S EQ
 Terminals: a
 Variables: XY
 Start: S
 
-S(X Y) -> EQ(X, Y) S(X)
+S(XY) -> EQ(X, Y) S(X)
 S(a) ->
 EQ(aX, aY) -> EQ(X, Y)
 EQ(,) ->

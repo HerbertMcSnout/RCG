@@ -1,3 +1,4 @@
+# Recognizes the language MIX = {w | #_a(w) = #_b(w) = #_c(w)}
 Nonterminals: S M one eqlen
 Terminals: abc
 Variables: WXYZT

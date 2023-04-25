@@ -119,9 +119,11 @@ parseClause n t v s =
     parsePredh (Right (n, a, acc)) (c : as) =
       parsePredh (Right (n, a, c : acc)) as
 
+
+
 parseRCG :: String -> Maybe RCG
 parseRCG s =
-  case lines s of
+  case dropComments (lines s) of
     n' : t' : v' : s' : p' ->
       let n = parseNonterminals (dropPrefix "N:" (dropPrefix "Nonterminals:" n'))
           t = parseTerminals (dropPrefix "T:" (dropPrefix "Terminals:" t'))
@@ -130,15 +132,6 @@ parseRCG s =
         (if s `Set.member` n then Just () else Nothing) >>
         mapM (parseClause n t v) (filter (not . null) p') >>= \p ->
         Just (RCG n t v s p)
-  where
-    stripWS :: String -> String
-    stripWS (' ' : s) = stripWS s
-    stripWS s = s
-    
-    dropPrefix :: String -> String -> String
-    dropPrefix pre s
-      | pre == take (length pre) s = drop (length pre) s
-      | otherwise = s
 
 enumerate :: (Num n, Enum n) => [a] -> [(n, a)]
 enumerate = zip [0..]
@@ -258,6 +251,33 @@ parseString g@(RCG n t v s p) str =
 
 readLines :: RCG -> IO ()
 readLines g = getContents >>= foldr (\line next -> putStrLn (show (parseString g line)) >> next) (return ()) . lines
+
+stripLeadingWS :: String -> String
+stripLeadingWS (' ' : s) = stripLeadingWS s
+stripLeadingWS ('\t' : s) = stripLeadingWS s
+stripLeadingWS s = s
+
+stripTrailingWS :: String -> String
+stripTrailingWS "" = ""
+stripTrailingWS (c : s) =
+  case (c, stripTrailingWS s) of
+    (' ', "") -> ""
+    ('\t', "") -> ""
+    (c, s') -> c : s'
+
+stripWS :: String -> String
+stripWS = stripTrailingWS . stripLeadingWS
+
+dropPrefix :: String -> String -> String
+dropPrefix pre s
+  | pre == take (length pre) s = drop (length pre) s
+  | otherwise = s
+
+dropComments :: [String] -> [String]
+dropComments = filter (not . null) . map stripWS . map h where
+  h ('#' : _) = ""
+  h (c : s) = c : h s
+  h "" = ""
 
 parseError :: String -> IO ()
 parseError fn = putStrLn ("Error parsing RCG from file " ++ show fn)

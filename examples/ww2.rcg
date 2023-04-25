@@ -1,3 +1,8 @@
+# Note: using the same var (X) more than once
+# in the lhs of a clause does not work currently.
+# This is an RCG we'd like to work in the future.
+# (See ww.rcg for a working version)
+# Recognizes the language {ww | w \in {a,b}*}
 Nonterminals: S
 Terminals: ab
 Variables: X

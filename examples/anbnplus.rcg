@@ -1,13 +1,22 @@
+# Recognizes the language {(a^n b^n)+ | n >= 1}
 Nonterminals: S T A E
 Terminals: ab
 Variables: XYZ
 Start: S
 
 S(XY) -> T(X, Y)
+
+# First arg represents the first a^n b^n to
+# compare the length of the rest against
+# Second is the rest of the string
 T(X,) -> A(X)
-T(X, YZ) -> A(X) E(X, Y) T(X, Z)
+T(X, YZ) -> E(X, Y) T(X, Z)
+
+# Recognizes a^n b^n
 A(aXb) -> A(X)
 A(ab) ->
+
+# Recognizes two equal strings
 E(aX, aY) -> E(X, Y)
 E(bX, bY) -> E(X, Y)
 E(,) ->

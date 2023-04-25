@@ -1,3 +1,4 @@
+# Recognizes the language {ww | w \in {a,b}*}
 Nonterminals: S A
 Terminals: ab
 Variables: XY
